@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { providers } from "@/lib/providers";
 import { intelligentRoute, type IntelligentRouteOutput } from "@/ai/flows/intelligent-routing";
 import { Send, Loader, Share2, Copy } from "lucide-react";
+import { useKeys } from "@/hooks/use-keys";
 
 type Message = {
   role: "user" | "assistant";
@@ -33,6 +34,7 @@ export default function ComposePage() {
   const [error, setError] = useState<string | null>(null);
   const [model, setModel] = useState("gpt-4o-mini");
   const [lastRouteInfo, setLastRouteInfo] = useState<IntelligentRouteOutput['routing'] | null>(null);
+  const { keys } = useKeys();
 
   const allModels = providers.flatMap((p) => p.models);
 
@@ -52,6 +54,7 @@ export default function ComposePage() {
         messages: newMessages.map(m => ({ role: m.role, content: m.content })),
         providerHint: null,
         stream: false,
+        keys: keys,
       });
 
       if (response && response.choices && response.choices.length > 0) {
@@ -179,10 +182,10 @@ export default function ComposePage() {
                  {lastRouteInfo.switchEvents.length > 0 && (
                    <div>
                      <strong>Switch Events:</strong>
-                     <ul className="list-disc pl-5 mt-1">
+                     <ul className="list-disc pl-5 mt-1 text-xs">
                        {lastRouteInfo.switchEvents.map((event, i) => (
                          <li key={i}>
-                           Reason: {event.reason} at {new Date(event.at).toLocaleTimeString()}
+                           {event.reason}
                          </li>
                        ))}
                      </ul>
