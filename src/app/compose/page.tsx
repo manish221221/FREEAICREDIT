@@ -32,7 +32,7 @@ export default function ComposePage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [model, setModel] = useState("gpt-4o-mini");
+  const [model, setModel] = useState("gemini-1.5-flash-latest");
   const [lastRouteInfo, setLastRouteInfo] = useState<IntelligentRouteOutput['routing'] | null>(null);
   const { keys } = useKeys();
 
@@ -52,8 +52,6 @@ export default function ComposePage() {
       const response = await intelligentRoute({
         model,
         messages: newMessages.map(m => ({ role: m.role, content: m.content })),
-        providerHint: null,
-        stream: false,
         keys: keys,
       });
 
@@ -82,7 +80,7 @@ export default function ComposePage() {
       <header className="mb-6">
         <h1 className="text-3xl font-headline font-bold tracking-tight">Compose</h1>
         <p className="text-muted-foreground">
-          Chat with any model through the AI Hub intelligent router.
+          Chat with available AI models.
         </p>
       </header>
       
@@ -179,18 +177,6 @@ export default function ComposePage() {
               </CardHeader>
               <CardContent className="text-sm space-y-2">
                  <p><strong>Key Used:</strong> <Badge variant="secondary">{lastRouteInfo.key_label}</Badge></p>
-                 {lastRouteInfo.switchEvents.length > 0 && (
-                   <div>
-                     <strong>Switch Events:</strong>
-                     <ul className="list-disc pl-5 mt-1 text-xs">
-                       {lastRouteInfo.switchEvents.map((event, i) => (
-                         <li key={i}>
-                           {event.reason}
-                         </li>
-                       ))}
-                     </ul>
-                   </div>
-                 )}
               </CardContent>
             </Card>
           )}
