@@ -10,6 +10,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { generateAgentContent } from './agent-content-generation';
 
 // Define schemas for agent steps and overall agent definition
 const AgentStepSchema = z.object({
@@ -51,43 +52,48 @@ const executeAgentFlow = ai.defineFlow(
     let context: AgentContext = {};
 
     for (const step of agentDefinition.steps) {
+      // Simple templating: replace placeholders like {{llmOutput}}
+      const processedArgs = step.args ? JSON.parse(JSON.stringify(step.args).replace(/{{(.*?)}}/g, (match, key) => context[key.trim()] || '')) : {};
+      
       switch (step.type) {
         case 'llm':
-          // Example LLM call - replace with actual implementation using Genkit prompts
-          if (!step.args?.prompt) {
+          if (!processedArgs?.prompt) {
             throw new Error('LLM step requires a prompt argument.');
           }
-          const llmResult = await callLLM(step.args.prompt, context);
-          context.llmOutput = llmResult;
+          const llmResult = await callLLM(processedArgs.prompt, context);
+          context.llmOutput = llmResult.content;
           break;
         case 'clipboard':
-          // Placeholder for clipboard interaction - replace with actual device capability call
-          context.clipboardContent = context.llmOutput;
+          // Placeholder for clipboard interaction
+          if (context.llmOutput) {
+            context.clipboardContent = context.llmOutput;
+            console.log('Copied to clipboard (simulated):', context.clipboardContent);
+          }
           break;
         case 'notification':
-          // Placeholder for notification - replace with actual device capability call
-          console.log(`Sending notification: ${context.llmOutput}`);
-          break;
+           // Placeholder for notification
+           const notificationContent = processedArgs.content || context.llmOutput;
+           console.log(`Sending notification (simulated): ${notificationContent}`);
+           break;
         case 'share':
-          // Placeholder for share action - replace with actual device capability call
-          console.log(`Sharing: ${context.llmOutput}`);
-          break;
+           // Placeholder for share action
+           const shareContent = processedArgs.content || context.llmOutput;
+           console.log(`Sharing (simulated): ${shareContent}`);
+           break;
         default:
           console.warn(`Unknown step type: ${step.type}`);
       }
     }
-
     return context;
   }
 );
 
-async function callLLM(prompt: string, context: AgentContext): Promise<string> {
-  const llmPrompt = ai.definePrompt({
-    name: 'miniAgentLLMPrompt',
-    prompt: prompt,
-  });
-  const result = await llmPrompt(context);
-  return result.output as string; // Simplified type assertion
+async function callLLM(prompt: string, context: AgentContext) {
+    const { output } = await generateAgentContent({
+        task: prompt,
+        context: JSON.stringify(context)
+    });
+    return output!;
 }
 
 export type AgentInput = z.infer<typeof AgentDefinitionSchema>;
