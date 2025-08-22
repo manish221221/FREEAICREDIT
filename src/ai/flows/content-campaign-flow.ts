@@ -64,6 +64,7 @@ Given the user's prompt, generate a complete content campaign. The campaign must
 
 User Prompt: {{{prompt}}}
 `,
+  model: 'googleai/gemini-1.5-flash-latest',
 });
 
 const contentCampaignFlow = ai.defineFlow(
@@ -74,6 +75,15 @@ const contentCampaignFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
+    
+    // Replace placeholder URLs with dynamic Unsplash links
+    if (output?.images) {
+      output.images.forEach(image => {
+        const keywords = image['data-ai-hint'].split(' ').join(',');
+        image.url = `https://source.unsplash.com/1024x576/?${keywords}`;
+      });
+    }
+    
     return output!;
   }
 );

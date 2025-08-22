@@ -36,7 +36,7 @@ export function AgentCard({ agent }: { agent: Agent }) {
 
   const handleClientSideActions = (result: AgentContext) => {
     if (result.clipboardContent) {
-      navigator.clipboard.writeText(result.clipboardContent);
+      navigator.clipboard.writeText(String(result.clipboardContent));
       toast({ title: "Copied to clipboard" });
     }
     if (result.notification) {
@@ -69,8 +69,10 @@ export function AgentCard({ agent }: { agent: Agent }) {
 
       toast({
           title: "Agent Executed",
-          description: `"${agent.name}" ran successfully.`,
+          description: `"${agent.name}" ran successfully. Final output available in console.`,
       });
+      console.log("Agent execution result:", result);
+
     } catch (error) {
       console.error('Failed to run agent', error);
       toast({
