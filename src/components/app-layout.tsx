@@ -23,12 +23,14 @@ import {
   Sun,
   Moon,
   BrainCircuit,
+  PenSquare,
 } from "lucide-react";
 
 const menuItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/compose", label: "Compose", icon: MessageSquare },
   { href: "/agents", label: "Mini-Agents", icon: Bot },
+  { href: "/studio", label: "Studio", icon: PenSquare },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
