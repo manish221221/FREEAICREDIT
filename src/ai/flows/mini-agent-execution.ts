@@ -64,21 +64,25 @@ const executeAgentFlow = ai.defineFlow(
           context.llmOutput = llmResult.content;
           break;
         case 'clipboard':
-          // Placeholder for clipboard interaction
-          if (context.llmOutput) {
-            context.clipboardContent = context.llmOutput;
-            console.log('Copied to clipboard (simulated):', context.clipboardContent);
+          const clipboardContent = processedArgs.content || context.llmOutput;
+          if (clipboardContent) {
+            // This will be executed on the client-side via the component
+            context.clipboardContent = clipboardContent;
           }
           break;
         case 'notification':
-           // Placeholder for notification
            const notificationContent = processedArgs.content || context.llmOutput;
-           console.log(`Sending notification (simulated): ${notificationContent}`);
+           if (notificationContent) {
+             // This will be executed on the client-side via the component
+             context.notification = { title: agentDefinition.name, body: notificationContent };
+           }
            break;
         case 'share':
-           // Placeholder for share action
            const shareContent = processedArgs.content || context.llmOutput;
-           console.log(`Sharing (simulated): ${shareContent}`);
+           if (shareContent) {
+             // This will be executed on the client-side via the component
+             context.share = { title: agentDefinition.name, text: shareContent };
+           }
            break;
         default:
           console.warn(`Unknown step type: ${step.type}`);

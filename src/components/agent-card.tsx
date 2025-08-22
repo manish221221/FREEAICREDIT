@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Play, Edit, Trash2, Bot, Loader } from 'lucide-react';
 import { useAgents } from '@/hooks/use-agents';
-import { executeAgent, type AgentDefinition } from '@/ai/flows/mini-agent-execution';
+import { executeAgent, type AgentDefinition, type AgentContext } from '@/ai/flows/mini-agent-execution';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -34,6 +34,27 @@ export function AgentCard({ agent }: { agent: Agent }) {
   const [isRunning, setIsRunning] = useState(false);
   const { toast } = useToast();
 
+  const handleClientSideActions = (result: AgentContext) => {
+    if (result.clipboardContent) {
+      navigator.clipboard.writeText(result.clipboardContent);
+      toast({ title: "Copied to clipboard" });
+    }
+    if (result.notification) {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          new Notification(result.notification.title, { body: result.notification.body });
+        }
+      });
+    }
+    if (result.share) {
+      if (navigator.share) {
+        navigator.share(result.share);
+      } else {
+        toast({ variant: 'destructive', title: 'Share not supported', description: 'Your browser does not support the Web Share API.' });
+      }
+    }
+  };
+
   const handleRun = async () => {
     setIsRunning(true);
     try {
@@ -43,7 +64,9 @@ export function AgentCard({ agent }: { agent: Agent }) {
         permissions: agent.permissions,
       };
       const result = await executeAgent(agentDefinition);
-      console.log('Agent executed successfully', result);
+      
+      handleClientSideActions(result);
+
       toast({
           title: "Agent Executed",
           description: `"${agent.name}" ran successfully.`,
