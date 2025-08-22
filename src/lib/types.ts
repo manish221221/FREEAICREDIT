@@ -19,7 +19,7 @@ export interface ApiKey {
 }
 
 export interface AgentStep {
-  type: 'llm' | 'clipboard' | 'notification' | 'share' | 'pick_file' | 'extract';
+  type: 'llm' | 'clipboard' | 'notification' | 'share';
   args?: Record<string, any>;
 }
 

@@ -7,14 +7,12 @@ import { v4 as uuidv4 } from 'uuid';
 const initialAgents: Agent[] = [
     {
         id: '1',
-        name: 'Summarize and Share',
-        description: 'Extracts text from a file, summarizes it using an AI model, and shares the result.',
-        permissions: ["files.read", "share"],
+        name: 'Summarize & Share',
+        description: 'Generates a summary of today\'s news and allows you to share it.',
+        permissions: ["share", "notification"],
         steps: [
-            { type: 'pick_file', args: { type: 'pdf' } },
-            { type: 'extract' },
-            { type: 'llm', args: { model: 'auto', prompt: 'Summarize the following text in 5 bullet points:' } },
-            { type: 'share' }
+            { type: 'llm', args: { prompt: "Summarize today's top 3 news stories in a single paragraph." } },
+            { type: 'share', args: {} }
         ]
     },
     {
@@ -23,8 +21,8 @@ const initialAgents: Agent[] = [
         description: 'Generates a daily briefing and shows it as a notification.',
         permissions: ["notification"],
         steps: [
-            { type: 'llm', args: { model: 'auto', prompt: 'Provide a brief summary of today\'s top news headlines.' } },
-            { type: 'notification' }
+            { type: 'llm', args: { prompt: 'Provide a brief summary of today\'s top news headlines.' } },
+            { type: 'notification', args: {} }
         ]
     }
 ];

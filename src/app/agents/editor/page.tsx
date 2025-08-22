@@ -28,10 +28,12 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateAgentContent } from '@/ai/flows/agent-content-generation';
 import { useToast } from '@/hooks/use-toast';
-import { Loader, Sparkles, Trash2, PlusCircle } from 'lucide-react';
+import { Loader, Sparkles, Trash2, PlusCircle, Info } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
 
 const stepSchema = z.object({
-  type: z.enum(['llm', 'clipboard', 'notification', 'share', 'pick_file', 'extract']),
+  type: z.enum(['llm', 'clipboard', 'notification', 'share']),
   args: z.record(z.any()).optional(),
 });
 
@@ -42,7 +44,11 @@ const agentSchema = z.object({
   steps: z.array(stepSchema),
 });
 
-const stepTypes: Array<z.infer<typeof stepSchema>['type']> = ['llm', 'clipboard', 'notification', 'share', 'pick_file', 'extract'];
+const stepTypes: Array<z.infer<typeof stepSchema>['type']> = ['llm', 'clipboard', 'notification', 'share'];
+
+const stepRequiresArgs = (type: z.infer<typeof stepSchema>['type']) => {
+    return type === 'llm';
+};
 
 function AgentEditor() {
   const router = useRouter();
@@ -76,17 +82,28 @@ function AgentEditor() {
     }
   }, [existingAgent, form]);
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, update } = useFieldArray({
     control: form.control,
     name: "steps",
   });
+  
+  const watchedSteps = form.watch('steps');
 
   const onSubmit = (values: z.infer<typeof agentSchema>) => {
+    // Filter out empty args
+    const cleanedValues = {
+        ...values,
+        steps: values.steps.map(step => ({
+            ...step,
+            args: step.type === 'llm' && step.args?.prompt ? step.args : {},
+        }))
+    };
+
     if (existingAgent) {
-      updateAgent({ ...existingAgent, ...values });
+      updateAgent({ ...existingAgent, ...cleanedValues });
       toast({ title: 'Agent Updated', description: `"${values.name}" has been saved.` });
     } else {
-      addAgent(values);
+      addAgent(cleanedValues);
       toast({ title: 'Agent Created', description: `"${values.name}" has been created.` });
     }
     router.push('/agents');
@@ -99,7 +116,6 @@ function AgentEditor() {
       setIsGenerating(true);
       try {
           const result = await generateAgentContent({ task, context });
-          // Handle potential markdown ```json wrapper
           const cleanedResult = result.content.replace(/^```json\n|```$/g, '').trim();
           const generated = JSON.parse(cleanedResult);
           
@@ -173,7 +189,10 @@ function AgentEditor() {
                   </Button>
               </CardHeader>
               <CardContent className="space-y-4">
-                  {fields.map((field, index) => (
+                  {fields.map((field, index) => {
+                      const stepType = watchedSteps[index]?.type;
+                      
+                      return (
                       <div key={field.id} className="p-4 border rounded-lg relative space-y-4">
                           <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive hover:text-destructive" onClick={() => remove(index)}>
                               <Trash2 className="h-4 w-4" />
@@ -186,7 +205,14 @@ function AgentEditor() {
                                 render={({ field }) => (
                                     <FormItem className="flex-1">
                                         <FormLabel>Step Type</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <Select 
+                                            onValueChange={(value) => {
+                                                field.onChange(value);
+                                                // Reset args when type changes
+                                                update(index, { type: value as any, args: {} });
+                                            }} 
+                                            defaultValue={field.value}
+                                        >
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select a step type" />
@@ -203,34 +229,41 @@ function AgentEditor() {
                                 )}
                             />
                           </div>
-                          <Controller
-                              control={form.control}
-                              name={`steps.${index}.args`}
-                              render={({ field }) => (
-                                  <FormItem>
-                                      <FormLabel>Arguments (JSON)</FormLabel>
-                                       <FormControl>
-                                          <Textarea 
-                                              placeholder='{ "prompt": "Summarize this for me" }'
-                                              value={field.value ? JSON.stringify(field.value, null, 2) : ''}
-                                              onChange={(e) => {
-                                                  try {
-                                                      field.onChange(JSON.parse(e.target.value));
-                                                      form.clearErrors(`steps.${index}.args`);
-                                                  } catch {
-                                                      form.setError(`steps.${index}.args`, { type: 'manual', message: 'Invalid JSON' });
-                                                  }
-                                              }}
-                                              rows={4}
-                                              className="font-mono text-xs"
-                                          />
-                                      </FormControl>
-                                      <FormMessage />
-                                  </FormItem>
-                              )}
-                          />
+
+                          {stepType === 'llm' && (
+                            <FormField
+                                control={form.control}
+                                name={`steps.${index}.args.prompt`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Prompt</FormLabel>
+                                        <FormControl>
+                                            <Textarea
+                                                placeholder="e.g., Summarize the following text: {{previousStepOutput}}"
+                                                {...field}
+                                                rows={3}
+                                            />
+                                        </FormControl>
+                                        <FormDescription>
+                                            Use `{{llmOutput}}` to include output from a previous LLM step.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                          )}
+
+                          {!stepRequiresArgs(stepType) && (
+                            <Alert>
+                                <Info className="h-4 w-4" />
+                                <AlertTitle>No arguments needed</AlertTitle>
+                                <AlertDescription>
+                                    This step will automatically use the output from the previous step.
+                                </AlertDescription>
+                            </Alert>
+                          )}
                       </div>
-                  ))}
+                  )})}
                   <Button type="button" variant="outline" size="sm" onClick={() => append({type: 'llm', args: {prompt: ''}})}>
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Add Step

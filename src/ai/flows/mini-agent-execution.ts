@@ -10,7 +10,8 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { generateAgentContent } from './agent-content-generation';
+import {generate} from 'genkit';
+
 
 // Define schemas for agent steps and overall agent definition
 const AgentStepSchema = z.object({
@@ -57,30 +58,31 @@ const executeAgentFlow = ai.defineFlow(
       
       switch (step.type) {
         case 'llm':
-          if (!processedArgs?.prompt) {
-            throw new Error('LLM step requires a prompt argument.');
-          }
-          const llmResult = await callLLM(processedArgs.prompt, context);
-          context.llmOutput = llmResult.content;
-          break;
+            const prompt = processedArgs.prompt || context.llmOutput;
+            if (!prompt) {
+                throw new Error('LLM step requires a prompt or input from a previous step.');
+            }
+            const response = await generate({
+                model: 'googleai/gemini-1.5-flash-latest',
+                prompt: prompt,
+            });
+            context.llmOutput = response.text();
+            break;
         case 'clipboard':
           const clipboardContent = processedArgs.content || context.llmOutput;
           if (clipboardContent) {
-            // This will be executed on the client-side via the component
             context.clipboardContent = clipboardContent;
           }
           break;
         case 'notification':
            const notificationContent = processedArgs.content || context.llmOutput;
            if (notificationContent) {
-             // This will be executed on the client-side via the component
              context.notification = { title: agentDefinition.name, body: notificationContent };
            }
            break;
         case 'share':
            const shareContent = processedArgs.content || context.llmOutput;
            if (shareContent) {
-             // This will be executed on the client-side via the component
              context.share = { title: agentDefinition.name, text: shareContent };
            }
            break;
@@ -91,14 +93,6 @@ const executeAgentFlow = ai.defineFlow(
     return context;
   }
 );
-
-async function callLLM(prompt: string, context: AgentContext) {
-    const { output } = await generateAgentContent({
-        task: prompt,
-        context: JSON.stringify(context)
-    });
-    return output!;
-}
 
 export type AgentInput = z.infer<typeof AgentDefinitionSchema>;
 export type AgentOutput = AgentContext;
