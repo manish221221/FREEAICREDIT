@@ -25,6 +25,11 @@ import {
   BrainCircuit,
   PenSquare,
 } from "lucide-react";
+import useLocalStorage from "@/hooks/use-local-storage";
+import { useAgents } from "@/hooks/use-agents";
+import { useToast } from "@/hooks/use-toast";
+import { executeAgent, type AgentContext, type AgentDefinition } from "@/ai/flows/mini-agent-execution";
+
 
 const menuItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -38,6 +43,57 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [theme, setTheme] = useState("light");
   const [isClient, setIsClient] = useState(false);
+  const [autorunAgents] = useLocalStorage('autorunAgents', false);
+  const { agents } = useAgents();
+  const { toast } = useToast();
+
+  const handleClientSideActions = (result: AgentContext) => {
+    if (result.clipboardContent) {
+      navigator.clipboard.writeText(String(result.clipboardContent));
+      toast({ title: "Copied to clipboard" });
+    }
+    if (result.notification) {
+      new Notification(result.notification.title, { body: result.notification.body });
+    }
+    if (result.share) {
+      if (navigator.share) {
+        navigator.share(result.share);
+      } else {
+        toast({ variant: 'destructive', title: 'Share not supported', description: 'Your browser does not support the Web Share API.' });
+      }
+    }
+  };
+
+  const requestPermissions = async (agentPermissions: string[]) => {
+    if (agentPermissions.includes('notification')) {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            toast({ variant: 'destructive', title: 'Permission Denied', description: 'Notification permission is required to run agents.' });
+            return false;
+        }
+    }
+    return true;
+  }
+
+  useEffect(() => {
+    if (isClient && autorunAgents) {
+      toast({ title: "Auto-Run Enabled", description: `Running ${agents.length} agents...` });
+      agents.forEach(async (agent) => {
+        const permissionsGranted = await requestPermissions(agent.permissions);
+        if (!permissionsGranted) {
+            toast({ variant: 'destructive', title: `Permissions denied for ${agent.name}`, description: 'Cannot execute agent.'});
+            return;
+        }
+        try {
+          const result = await executeAgent(agent as AgentDefinition);
+          handleClientSideActions(result);
+          toast({ title: "Agent Executed", description: `"${agent.name}" ran successfully.` });
+        } catch (error) {
+           toast({ variant: "destructive", title: `Agent Failed: ${agent.name}`, description: String(error) });
+        }
+      });
+    }
+  }, [isClient, autorunAgents, pathname]); // Reruns on path change (refresh-like behavior)
 
   useEffect(() => {
     setIsClient(true);

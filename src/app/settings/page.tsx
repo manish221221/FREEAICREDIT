@@ -6,19 +6,17 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun } from "lucide-react";
+import useLocalStorage from "@/hooks/use-local-storage";
 
 export default function SettingsPage() {
   const [theme, setTheme] = useState("light");
   const [isClient, setIsClient] = useState(false);
-  const [isNoBackendMode, setIsNoBackendMode] = useState(true);
+  const [autorunAgents, setAutorunAgents] = useLocalStorage('autorunAgents', false);
 
   useEffect(() => {
     setIsClient(true);
     const savedTheme = localStorage.getItem("theme") || "light";
     setTheme(savedTheme);
-
-    const savedMode = localStorage.getItem("noBackendMode");
-    setIsNoBackendMode(savedMode ? JSON.parse(savedMode) : true);
   }, []);
 
   const toggleTheme = () => {
@@ -28,9 +26,8 @@ export default function SettingsPage() {
     document.documentElement.classList.toggle("dark");
   };
 
-  const toggleNoBackendMode = (checked: boolean) => {
-    setIsNoBackendMode(checked);
-    localStorage.setItem("noBackendMode", JSON.stringify(checked));
+  const toggleAutorunAgents = (checked: boolean) => {
+    setAutorunAgents(checked);
   };
   
   if (!isClient) {
@@ -74,21 +71,21 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">Data & Privacy</CardTitle>
-          <CardDescription>Control how your data is handled.</CardDescription>
+          <CardTitle className="font-headline">Automation</CardTitle>
+          <CardDescription>Control agent execution settings.</CardDescription>
         </CardHeader>
         <CardContent>
             <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
-                    <Label htmlFor="no-backend-mode">No-Backend Mode</Label>
+                    <Label htmlFor="autorun-agents">Auto-Run Agents</Label>
                     <p className="text-sm text-muted-foreground">
-                        All API calls are made directly from your device.
+                        Automatically run all agents on every page refresh.
                     </p>
                 </div>
                 <Switch
-                    id="no-backend-mode"
-                    checked={isNoBackendMode}
-                    onCheckedChange={toggleNoBackendMode}
+                    id="autorun-agents"
+                    checked={autorunAgents}
+                    onCheckedChange={toggleAutorunAgents}
                 />
             </div>
         </CardContent>
