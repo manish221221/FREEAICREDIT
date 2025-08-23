@@ -90,13 +90,16 @@ function AgentEditor() {
   const watchedSteps = form.watch('steps');
 
   const onSubmit = (values: z.infer<typeof agentSchema>) => {
-    // Filter out empty args
+    // Filter out empty args and invalid steps
     const cleanedValues = {
         ...values,
         steps: values.steps.map(step => ({
             ...step,
             args: step.type === 'llm' && step.args?.prompt ? step.args : {},
-        }))
+        })).filter(step => {
+            // Keep all non-llm steps, or llm steps that have a prompt
+            return step.type !== 'llm' || (step.args && Object.keys(step.args).length > 0);
+        })
     };
 
     if (existingAgent) {

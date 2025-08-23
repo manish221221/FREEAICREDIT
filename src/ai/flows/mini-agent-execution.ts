@@ -58,7 +58,11 @@ const executeAgentFlow = ai.defineFlow(
       
       switch (step.type) {
         case 'llm':
-            const prompt = processedArgs.prompt || context.llmOutput;
+            const promptFromArgs = processedArgs.prompt || '';
+            const prompt = promptFromArgs.includes('{{llmOutput}}') 
+              ? promptFromArgs.replace('{{llmOutput}}', context.llmOutput || '')
+              : promptFromArgs || context.llmOutput;
+
             if (!prompt) {
                 throw new Error('LLM step requires a prompt or input from a previous step.');
             }
