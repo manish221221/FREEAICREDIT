@@ -239,7 +239,7 @@ function AgentEditor() {
                                         <FormLabel>Prompt</FormLabel>
                                         <FormControl>
                                             <Textarea
-                                                placeholder="e.g., Summarize the following text: {{previousStepOutput}}"
+                                                placeholder="e.g., Summarize the following text: {{llmOutput}}"
                                                 {...field}
                                                 rows={3}
                                             />

@@ -15,7 +15,7 @@ import {generate} from 'genkit';
 
 // Define schemas for agent steps and overall agent definition
 const AgentStepSchema = z.object({
-  type: z.string().describe('The type of the agent step (e.g., llm, clipboard, notification).'),
+  type: z.string().describe('The type of the agent step (e.g., llm, clipboard, notification, share).'),
   args: z.record(z.any()).optional().describe('Arguments for the step, specific to the step type.'),
 });
 
@@ -54,7 +54,9 @@ const executeAgentFlow = ai.defineFlow(
 
     for (const step of agentDefinition.steps) {
       // Simple templating: replace placeholders like {{llmOutput}}
-      const processedArgs = step.args ? JSON.parse(JSON.stringify(step.args).replace(/{{(.*?)}}/g, (match, key) => context[key.trim()] || '')) : {};
+      const processedArgs = step.args ? JSON.parse(
+        JSON.stringify(step.args).replace(/"\{\{(.*?)\}\}"/g, (match, key) => JSON.stringify(context[key.trim()] || ''))
+      ) : {};
       
       switch (step.type) {
         case 'llm':
