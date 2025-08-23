@@ -6,10 +6,26 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader, Sparkles } from "lucide-react";
+import { Loader, Sparkles, Copy } from "lucide-react";
 import Image from "next/image";
 import { generateContentCampaign, type ContentCampaignOutput } from "@/ai/flows/content-campaign-flow";
 import { useToast } from "@/hooks/use-toast";
+
+const InteractiveTextarea = ({ value, title }: { value: string, title: string }) => {
+    const { toast } = useToast();
+    const handleCopy = () => {
+        navigator.clipboard.writeText(value);
+        toast({ title: `${title} Copied!` });
+    };
+    return (
+        <div className="relative group">
+            <Textarea value={value} readOnly rows={20} className="text-base w-full bg-background" />
+            <Button variant="ghost" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={handleCopy}>
+                <Copy className="h-4 w-4" />
+            </Button>
+        </div>
+    );
+};
 
 export default function StudioPage() {
     const [prompt, setPrompt] = useState("");
@@ -90,7 +106,7 @@ export default function StudioPage() {
                                 <CardTitle className="font-headline">{campaign.article.title}</CardTitle>
                             </CardHeader>
                             <CardContent className="prose prose-sm dark:prose-invert max-w-none">
-                                <Textarea value={campaign.article.content} readOnly rows={20} className="text-base w-full bg-background" />
+                                <InteractiveTextarea value={campaign.article.content} title="Article" />
                             </CardContent>
                         </Card>
                     </TabsContent>
@@ -102,7 +118,7 @@ export default function StudioPage() {
                                         <CardTitle className="font-headline text-lg">{post.platform}</CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        <Textarea value={post.content} readOnly rows={5} className="text-base w-full bg-background" />
+                                        <InteractiveTextarea value={post.content} title={`${post.platform} Post`} />
                                     </CardContent>
                                 </Card>
                             ))}
@@ -126,7 +142,7 @@ export default function StudioPage() {
                                 <CardTitle className="font-headline">{campaign.videoScript.title}</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <Textarea value={campaign.videoScript.script} readOnly rows={20} className="text-base font-mono w-full bg-background" />
+                                <InteractiveTextarea value={campaign.videoScript.script} title="Video Script" />
                             </CardContent>
                         </Card>
                     </TabsContent>

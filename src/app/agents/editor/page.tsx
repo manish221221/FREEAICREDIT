@@ -98,7 +98,7 @@ function AgentEditor() {
             args: step.type === 'llm' && step.args?.prompt ? step.args : {},
         })).filter(step => {
             // Keep all non-llm steps, or llm steps that have a prompt
-            return step.type !== 'llm' || (step.args && Object.keys(step.args).length > 0);
+            return step.type !== 'llm' || (step.args && Object.keys(step.args).length > 0 && step.args.prompt);
         })
     };
 
@@ -248,7 +248,7 @@ function AgentEditor() {
                                             />
                                         </FormControl>
                                         <FormDescription>
-                                            {'Use `{{llmOutput}}` to include output from a previous LLM step.'}
+                                            {"Use `{{llmOutput}}` to include output from a previous LLM step."}
                                         </FormDescription>
                                         <FormMessage />
                                     </FormItem>
