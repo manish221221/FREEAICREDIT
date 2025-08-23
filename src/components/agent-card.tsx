@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -69,7 +70,7 @@ export function AgentCard({ agent }: { agent: Agent }) {
 
       toast({
           title: "Agent Executed",
-          description: `"${agent.name}" ran successfully. Final output available in console.`,
+          description: `"${agent.name}" ran successfully.`,
       });
       console.log("Agent execution result:", result);
 
