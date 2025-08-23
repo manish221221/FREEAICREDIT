@@ -42,6 +42,18 @@ export async function executeAgent(agentDefinition: AgentDefinition): Promise<Ag
   return executeAgentFlow(agentDefinition);
 }
 
+// A more robust templating function
+const processArgs = (args: any, context: AgentContext) => {
+    if (!args) return {};
+    const str = JSON.stringify(args);
+    const templatedStr = str.replace(/"\{\{(.*?)\}\}"/g, (_match, key) => {
+        const value = context[key.trim()];
+        return value !== undefined ? JSON.stringify(value) : '""';
+    });
+    return JSON.parse(templatedStr);
+};
+
+
 const executeAgentFlow = ai.defineFlow(
   {
     name: 'executeAgentFlow',
@@ -52,18 +64,11 @@ const executeAgentFlow = ai.defineFlow(
     let context: AgentContext = {};
 
     for (const step of agentDefinition.steps) {
-      // Simple templating: replace placeholders like {{llmOutput}}
-      const processedArgs = step.args ? JSON.parse(
-        JSON.stringify(step.args).replace(/"\{\{(.*?)\}\}"/g, (match, key) => JSON.stringify(context[key.trim()] || ''))
-      ) : {};
+      const processedArgs = processArgs(step.args, context);
       
       switch (step.type) {
         case 'llm':
-            const promptFromArgs = processedArgs.prompt || '';
-            const prompt = promptFromArgs.includes('{{llmOutput}}') 
-              ? promptFromArgs.replace('{{llmOutput}}', context.llmOutput || '')
-              : promptFromArgs || context.llmOutput;
-
+            const prompt = processedArgs.prompt || context.llmOutput;
             if (!prompt) {
                 throw new Error('LLM step requires a prompt or input from a previous step.');
             }

@@ -46,10 +46,6 @@ const agentSchema = z.object({
 
 const stepTypes: Array<z.infer<typeof stepSchema>['type']> = ['llm', 'clipboard', 'notification', 'share'];
 
-const stepRequiresArgs = (type: z.infer<typeof stepSchema>['type']) => {
-    return type === 'llm';
-};
-
 function AgentEditor() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -256,8 +252,8 @@ function AgentEditor() {
                             />
                           )}
 
-                          {!stepRequiresArgs(stepType) && (
-                            <Alert>
+                          {stepType !== 'llm' && (
+                             <Alert>
                                 <Info className="h-4 w-4" />
                                 <AlertTitle>No arguments needed</AlertTitle>
                                 <AlertDescription>
