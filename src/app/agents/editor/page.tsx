@@ -245,7 +245,7 @@ function AgentEditor() {
                                             />
                                         </FormControl>
                                         <FormDescription>
-                                            Use `{{llmOutput}}` to include output from a previous LLM step.
+                                            {'Use `{{llmOutput}}` to include output from a previous LLM step.'}
                                         </FormDescription>
                                         <FormMessage />
                                     </FormItem>
