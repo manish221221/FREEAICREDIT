@@ -10,8 +10,6 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import {generate} from 'genkit';
-
 
 // Define schemas for agent steps and overall agent definition
 const AgentStepSchema = z.object({
@@ -64,11 +62,11 @@ const executeAgentFlow = ai.defineFlow(
             if (!prompt) {
                 throw new Error('LLM step requires a prompt or input from a previous step.');
             }
-            const response = await generate({
+            const response = await ai.generate({
                 model: 'googleai/gemini-1.5-flash-latest',
                 prompt: prompt,
             });
-            context.llmOutput = response.text();
+            context.llmOutput = response.text;
             break;
         case 'clipboard':
           const clipboardContent = processedArgs.content || context.llmOutput;
