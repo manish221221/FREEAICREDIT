@@ -41,11 +41,7 @@ export function AgentCard({ agent }: { agent: Agent }) {
       toast({ title: "Copied to clipboard" });
     }
     if (result.notification) {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          new Notification(result.notification.title, { body: result.notification.body });
-        }
-      });
+      new Notification(result.notification.title, { body: result.notification.body });
     }
     if (result.share) {
       if (navigator.share) {
@@ -56,8 +52,26 @@ export function AgentCard({ agent }: { agent: Agent }) {
     }
   };
 
+  const requestPermissions = async () => {
+    if (agent.permissions.includes('notification')) {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            toast({ variant: 'destructive', title: 'Permission Denied', description: 'Notification permission is required to run this agent.' });
+            return false;
+        }
+    }
+    return true;
+  }
+
   const handleRun = async () => {
     setIsRunning(true);
+    
+    const permissionsGranted = await requestPermissions();
+    if (!permissionsGranted) {
+        setIsRunning(false);
+        return;
+    }
+
     try {
       const agentDefinition: AgentDefinition = {
         name: agent.name,
@@ -72,7 +86,6 @@ export function AgentCard({ agent }: { agent: Agent }) {
           title: "Agent Executed",
           description: `"${agent.name}" ran successfully.`,
       });
-      console.log("Agent execution result:", result);
 
     } catch (error) {
       console.error('Failed to run agent', error);
