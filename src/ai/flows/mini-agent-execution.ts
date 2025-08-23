@@ -48,6 +48,7 @@ const processArgs = (args: any, context: AgentContext) => {
     const str = JSON.stringify(args);
     const templatedStr = str.replace(/"\{\{(.*?)\}\}"/g, (_match, key) => {
         const value = context[key.trim()];
+        // Ensure the substituted value is properly JSON-escaped.
         return value !== undefined ? JSON.stringify(value) : '""';
     });
     return JSON.parse(templatedStr);
@@ -68,6 +69,8 @@ const executeAgentFlow = ai.defineFlow(
       
       switch (step.type) {
         case 'llm':
+            // An explicit prompt in args always takes precedence.
+            // Otherwise, use the output of the previous LLM step if available.
             const prompt = processedArgs.prompt || context.llmOutput;
             if (!prompt) {
                 throw new Error('LLM step requires a prompt or input from a previous step.');
@@ -79,6 +82,7 @@ const executeAgentFlow = ai.defineFlow(
             context.llmOutput = response.text;
             break;
         case 'clipboard':
+          // Use the content from args if provided, otherwise default to the last LLM output.
           const clipboardContent = processedArgs.content || context.llmOutput;
           if (clipboardContent) {
             context.clipboardContent = clipboardContent;

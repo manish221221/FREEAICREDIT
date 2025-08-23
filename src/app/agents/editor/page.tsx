@@ -86,12 +86,12 @@ function AgentEditor() {
   const watchedSteps = form.watch('steps');
 
   const onSubmit = (values: z.infer<typeof agentSchema>) => {
-    // Filter out empty args and invalid steps
+    // Filter out empty args from non-LLM steps and LLM steps without a prompt
     const cleanedValues = {
         ...values,
         steps: values.steps.map(step => ({
             ...step,
-            args: step.type === 'llm' && step.args?.prompt ? step.args : {},
+            args: step.type === 'llm' && step.args?.prompt ? { prompt: step.args.prompt } : {},
         })).filter(step => {
             // Keep all non-llm steps, or llm steps that have a prompt
             return step.type !== 'llm' || (step.args && Object.keys(step.args).length > 0 && step.args.prompt);
@@ -206,9 +206,9 @@ function AgentEditor() {
                                         <FormLabel>Step Type</FormLabel>
                                         <Select 
                                             onValueChange={(value) => {
-                                                field.onChange(value);
-                                                // Reset args when type changes
-                                                update(index, { type: value as any, args: {} });
+                                                const newType = value as z.infer<typeof stepSchema>['type'];
+                                                const newArgs = newType === 'llm' ? { prompt: '' } : {};
+                                                update(index, { type: newType, args: newArgs });
                                             }} 
                                             defaultValue={field.value}
                                         >
@@ -240,6 +240,7 @@ function AgentEditor() {
                                             <Textarea
                                                 placeholder="e.g., Summarize the following text: {{llmOutput}}"
                                                 {...field}
+                                                value={field.value || ''}
                                                 rows={3}
                                             />
                                         </FormControl>
@@ -257,7 +258,7 @@ function AgentEditor() {
                                 <Info className="h-4 w-4" />
                                 <AlertTitle>No arguments needed</AlertTitle>
                                 <AlertDescription>
-                                    This step will automatically use the output from the previous step.
+                                    This step will automatically use the output from the previous LLM step, if available.
                                 </AlertDescription>
                             </Alert>
                           )}

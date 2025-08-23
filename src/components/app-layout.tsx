@@ -41,7 +41,6 @@ const menuItems = [
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [theme, setTheme] = useState("light");
   const [isClient, setIsClient] = useState(false);
   const [autorunAgents] = useLocalStorage('autorunAgents', false);
   const { agents } = useAgents();
@@ -93,12 +92,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         }
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClient, autorunAgents, pathname]); // Reruns on path change (refresh-like behavior)
 
   useEffect(() => {
     setIsClient(true);
     const savedTheme = localStorage.getItem("theme") || "light";
-    setTheme(savedTheme);
     if (savedTheme === "dark") {
       document.documentElement.classList.add("dark");
     } else {
@@ -107,10 +106,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
-    document.documentElement.classList.toggle("dark");
+    const isDark = document.documentElement.classList.toggle("dark");
+    localStorage.setItem("theme", isDark ? "dark" : "light");
   };
 
   return (
@@ -149,7 +146,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               className="w-full justify-start gap-2"
               aria-label="Toggle theme"
             >
-              {theme === "light" ? <Moon /> : <Sun />}
+              <Sun className="dark:hidden"/>
+              <Moon className="hidden dark:block"/>
               <span>Toggle Theme</span>
             </Button>
           )}
