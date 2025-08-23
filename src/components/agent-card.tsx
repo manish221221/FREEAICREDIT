@@ -111,7 +111,7 @@ export function AgentCard({ agent }: { agent: Agent }) {
           Run
         </Button>
         <div className="flex gap-2">
-            <Link href={`/agents/editor?id=${agent.id}`} passHref>
+            <Link href={`/agents/editor?id=${agent.id}`}>
                 <Button variant="ghost" size="icon">
                     <Edit className="h-4 w-4" />
                 </Button>
