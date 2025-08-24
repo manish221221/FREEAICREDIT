@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line, Legend } from "recharts";
 
 type Summary = {
   personal: { calls: number; tokens: number; costUSD: number; avgLatencyMs?: number };
@@ -21,6 +21,7 @@ export default function UsagePage() {
   const [range, setRange] = useState<string>("week");
   const [data, setData] = useState<Summary | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [series, setSeries] = useState<{ date: string; tokens: number; costUSD: number }[]>([]);
 
   useEffect(() => {
     setLoading(true);
@@ -28,6 +29,13 @@ export default function UsagePage() {
       .then(r => r.json())
       .then(json => setData(json))
       .finally(() => setLoading(false));
+  }, [range]);
+
+  useEffect(() => {
+    fetch(`/usage/timeseries?range=${range}&scope=personal`)
+      .then(r => r.json())
+      .then(json => setSeries(json.series || []))
+      .catch(() => setSeries([]));
   }, [range]);
 
   const poolChartData = useMemo(() => {
@@ -117,20 +125,21 @@ export default function UsagePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">Pools (Cost USD)</CardTitle>
+          <CardTitle className="font-headline">My Usage Over Time</CardTitle>
         </CardHeader>
         <CardContent className="h-64">
           {loading ? (
             <div className="text-sm text-muted-foreground">Loading…</div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={poolChartData}>
-                <XAxis dataKey="name" tickLine={false} axisLine={false} />
+              <LineChart data={series}>
+                <XAxis dataKey="date" tickLine={false} axisLine={false} />
                 <YAxis tickLine={false} axisLine={false} />
                 <Tooltip />
-                <Bar dataKey="totalCostUSD" fill="#94a3b8" name="Pool cost" />
-                <Bar dataKey="myCostUSD" fill="#22c55e" name="My cost" />
-              </BarChart>
+                <Legend />
+                <Line type="monotone" dataKey="tokens" stroke="#0ea5e9" name="Tokens" dot={false} />
+                <Line type="monotone" dataKey="costUSD" stroke="#22c55e" name="Cost (USD)" dot={false} />
+              </LineChart>
             </ResponsiveContainer>
           )}
         </CardContent>

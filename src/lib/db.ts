@@ -124,16 +124,62 @@ export const db = {
   },
   poolMember: {
     async findMany({ where, include }: { where: { userId?: string; active?: boolean }; include?: { pool?: boolean } }): Promise<PoolMember[]> {
+      const prisma = await getPrisma();
+      if (prisma) {
+        const rows = await prisma.poolMember.findMany({
+          where: {
+            userId: where.userId,
+            active: where.active,
+          },
+          include: { pool: !!include?.pool },
+        });
+        return rows as any;
+      }
       const rows = poolMembers.filter(pm => {
         if (where.userId !== undefined && pm.userId !== where.userId) return false;
         if (where.active !== undefined && pm.active !== where.active) return false;
         return true;
       });
-      // include.pool is always true in our usage; our store already nests pool
       return rows.map(r => ({ ...r }));
     },
   },
 };
+
+export async function getUsageEventsByDay(params: { userId?: string; poolId?: string; from?: Date; to?: Date }): Promise<{ date: string; tokens: number; costUSD: number }[]> {
+  const prisma = await getPrisma();
+  const from = params.from;
+  const to = params.to;
+  const where: any = { status: 'success' };
+  if (params.userId) where.userId = params.userId;
+  if (params.poolId !== undefined) where.poolId = params.poolId;
+  if (from || to) where.createdAt = { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) };
+
+  if (prisma) {
+    const rows = await prisma.usageEvent.findMany({ where, select: { createdAt: true, promptTokens: true, completionTokens: true, costUSD: true } });
+    const map = new Map<string, { tokens: number; costUSD: number }>();
+    for (const r of rows) {
+      const key = r.createdAt.toISOString().slice(0, 10);
+      const tokens = (r.promptTokens || 0) + (r.completionTokens || 0);
+      const agg = map.get(key) || { tokens: 0, costUSD: 0 };
+      agg.tokens += tokens;
+      agg.costUSD += r.costUSD || 0;
+      map.set(key, agg);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => (a < b ? -1 : 1)).map(([date, v]) => ({ date, ...v }));
+  }
+  // Fallback
+  const rows = usageEvents.filter(ev => matchesWhere(ev as any, { userId: params.userId, poolId: params.poolId, status: 'success', createdAt: from || to ? { gte: from, lte: to } : undefined }));
+  const map = new Map<string, { tokens: number; costUSD: number }>();
+  for (const r of rows) {
+    const key = r.createdAt.toISOString().slice(0, 10);
+    const tokens = (r.promptTokens || 0) + (r.completionTokens || 0);
+    const agg = map.get(key) || { tokens: 0, costUSD: 0 };
+    agg.tokens += tokens;
+    agg.costUSD += r.costUSD || 0;
+    map.set(key, agg);
+  }
+  return Array.from(map.entries()).sort(([a], [b]) => (a < b ? -1 : 1)).map(([date, v]) => ({ date, ...v }));
+}
 
 export type { AggregateArgs, AggregateResult };
 
