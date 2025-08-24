@@ -181,5 +181,46 @@ export async function getUsageEventsByDay(params: { userId?: string; poolId?: st
   return Array.from(map.entries()).sort(([a], [b]) => (a < b ? -1 : 1)).map(([date, v]) => ({ date, ...v }));
 }
 
+export async function getRecentUsageEvents(params: { userId: string; limit?: number }): Promise<{
+  id: string;
+  createdAt: string;
+  poolId: string | null;
+  tokens: number;
+  costUSD: number;
+  status: 'success' | 'error' | string;
+}[]> {
+  const prisma = await getPrisma();
+  const limit = params.limit ?? 10;
+  if (prisma) {
+    const rows = await prisma.usageEvent.findMany({
+      where: { userId: params.userId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: { id: true, createdAt: true, poolId: true, promptTokens: true, completionTokens: true, costUSD: true, status: true },
+    });
+    return rows.map((r: { id: string; createdAt: Date; poolId: string | null; promptTokens: number; completionTokens: number; costUSD: number; status: string }) => ({
+      id: r.id,
+      createdAt: r.createdAt.toISOString(),
+      poolId: r.poolId ?? null,
+      tokens: (r.promptTokens || 0) + (r.completionTokens || 0),
+      costUSD: r.costUSD || 0,
+      status: r.status as any,
+    }));
+  }
+  // Fallback to in-memory
+  const rows = usageEvents
+    .filter(ev => ev.userId === params.userId)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, limit);
+  return rows.map(r => ({
+    id: r.id,
+    createdAt: r.createdAt.toISOString(),
+    poolId: r.poolId ?? null,
+    tokens: (r.promptTokens || 0) + (r.completionTokens || 0),
+    costUSD: r.costUSD || 0,
+    status: r.status,
+  }));
+}
+
 export type { AggregateArgs, AggregateResult };
 

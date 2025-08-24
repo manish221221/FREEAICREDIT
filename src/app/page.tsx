@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -10,6 +10,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -21,11 +22,31 @@ import { ApiKeyForm } from "@/components/api-key-form";
 import { useKeys } from "@/hooks/use-keys";
 import { providers } from "@/lib/providers";
 import { ApiKeyList } from "@/components/api-key-list";
-import { PlusCircle, KeyRound, CheckCircle, BarChart, AlertCircle } from "lucide-react";
+import { PlusCircle, KeyRound, CheckCircle, TrendingUp, Activity } from "lucide-react";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from "recharts";
 
 export default function DashboardPage() {
   const { keys } = useKeys();
   const [isAddKeyOpen, setAddKeyOpen] = useState(false);
+  const [summary, setSummary] = useState<any>(null);
+  const [series, setSeries] = useState<any[]>([]);
+  const [recent, setRecent] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      fetch('/usage/summary?range=week').then(r => r.json()).catch(() => null),
+      fetch('/usage/timeseries?range=week&scope=personal').then(r => r.json()).catch(() => ({ series: [] })),
+      fetch('/usage/recent?limit=8').then(r => r.json()).catch(() => ({ events: [] })),
+    ])
+    .then(([s, ts, rec]) => {
+      setSummary(s);
+      setSeries(ts?.series || []);
+      setRecent(rec?.events || []);
+    })
+    .finally(() => setLoading(false));
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -103,6 +124,92 @@ export default function DashboardPage() {
           );
         })}
       </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2"><TrendingUp className="h-5 w-5" /> Personal Tokens (7 days)</CardTitle>
+          </CardHeader>
+          <CardContent className="h-64">
+            {loading ? (
+              <Skeleton className="h-full w-full" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={series}>
+                  <XAxis dataKey="date" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="tokens" stroke="#0ea5e9" name="Tokens" dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2"><Activity className="h-5 w-5" /> KPIs</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4 text-sm">
+            {loading ? (
+              <>
+                <Skeleton className="h-14" />
+                <Skeleton className="h-14" />
+                <Skeleton className="h-14" />
+                <Skeleton className="h-14" />
+              </>
+            ) : (
+              <>
+                <div>
+                  <div className="text-muted-foreground">Calls</div>
+                  <div className="text-lg font-medium">{summary?.personal?.calls ?? 0}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Tokens</div>
+                  <div className="text-lg font-medium">{summary?.personal?.tokens ?? 0}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Cost (USD)</div>
+                  <div className="text-lg font-medium">${(summary?.personal?.costUSD ?? 0).toFixed(3)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Avg Latency</div>
+                  <div className="text-lg font-medium">{Math.round(summary?.personal?.avgLatencyMs ?? 0)} ms</div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-headline">Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="grid gap-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-8" />
+              ))}
+            </div>
+          ) : (
+            <div className="divide-y">
+              {recent.map((e) => (
+                <div key={e.id} className="py-2 flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-3">
+                    <span className={`h-2.5 w-2.5 rounded-full ${e.status === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                    <span className="text-muted-foreground">{new Date(e.createdAt).toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <span>{e.tokens} tokens</span>
+                    <span>${e.costUSD.toFixed(3)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div>
         <h2 className="text-2xl font-headline font-bold tracking-tight mb-4">
