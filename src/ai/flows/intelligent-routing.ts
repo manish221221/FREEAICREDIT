@@ -10,14 +10,9 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {generate} from 'genkit';
 import {z} from 'genkit';
-import {Tool} from 'genkit/tool';
-import {Model} from 'genkit/model';
-import {googleAI} from '@genkit-ai/googleai';
 import type {ApiKey, Provider} from '@/lib/types';
 import {providers} from '@/lib/providers';
-import {MessageData} from 'genkit/model';
 
 const KeySchema = z.object({
   id: z.string(),
@@ -54,13 +49,21 @@ const getProviderForModel = (modelName: string): Provider | undefined => {
   return providers.find(p => p.models.includes(modelName));
 };
 
-const getModelRef = (providerId: string, modelName: string): Model => {
+const getModelId = (providerId: string, modelName: string): string => {
   switch (providerId) {
     case 'google':
-      return googleAI.model(modelName);
+      return `googleai/${modelName}`;
     default:
       throw new Error(`Unknown provider: ${providerId}`);
   }
+};
+
+const messagesToPrompt = (messages: { role: string; content: string }[]): string => {
+  const header = 'You are a helpful assistant. Respond to the user request.';
+  const body = messages
+    .map(m => `${m.role.toUpperCase()}: ${m.content}`)
+    .join('\n');
+  return `${header}\n\n${body}`;
 };
 
 const intelligentRouteFlow = ai.defineFlow(
@@ -83,21 +86,20 @@ const intelligentRouteFlow = ai.defineFlow(
     }
 
     try {
-      const modelRef = getModelRef(provider.id, model);
-      const response = await generate({
-        model: modelRef,
-        prompt: {messages: messages as MessageData[]},
-        config: {
-          apiKey: activeKey.key,
-        },
+      const modelId = getModelId(provider.id, model);
+      const response = await ai.generate({
+        model: modelId,
+        prompt: messagesToPrompt(messages),
       });
 
       return {
-        id: response.candidates[0].custom?.id || `genkit-id-${Date.now()}`,
+        id: `genkit-id-${Date.now()}`,
         provider: provider.id,
         model: model,
-        choices: [{message: {role: response.candidates[0].message.role, content: response.candidates[0].message.content[0].text}}],
-        usage: response.usage,
+        choices: [
+          { message: { role: 'assistant', content: response.text ?? '' } },
+        ],
+        usage: (response as any).usage,
         routing: {
           key_label: activeKey.label,
         },

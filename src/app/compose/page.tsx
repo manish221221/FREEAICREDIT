@@ -19,7 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { providers } from "@/lib/providers";
 import { intelligentRoute, type IntelligentRouteOutput } from "@/ai/flows/intelligent-routing";
-import { Send, Loader, Share2, Copy } from "lucide-react";
+import { Send, Loader, Mic, MicOff } from "lucide-react";
 import { useKeys } from "@/hooks/use-keys";
 
 type Message = {
@@ -35,8 +35,43 @@ export default function ComposePage() {
   const [model, setModel] = useState("gemini-1.5-flash-latest");
   const [lastRouteInfo, setLastRouteInfo] = useState<IntelligentRouteOutput['routing'] | null>(null);
   const { keys } = useKeys();
+  const [recording, setRecording] = useState(false);
+  const [recognition, setRecognition] = useState<any>(null);
 
   const allModels = providers.flatMap((p) => p.models);
+  const toggleVoice = () => {
+    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Speech recognition not supported in this browser.');
+      return;
+    }
+    if (!recognition) {
+      const rec = new SpeechRecognition();
+      rec.lang = 'en-US';
+      rec.continuous = false;
+      rec.interimResults = true;
+      rec.onresult = (e: any) => {
+        let final = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const transcript = e.results[i][0].transcript;
+          if (e.results[i].isFinal) final += transcript + ' ';
+        }
+        if (final) setInput(prev => (prev ? prev + ' ' : '') + final.trim());
+      };
+      rec.onend = () => setRecording(false);
+      setRecognition(rec);
+      setRecording(true);
+      rec.start();
+      return;
+    }
+    if (recording) {
+      recognition.stop();
+      setRecording(false);
+    } else {
+      recognition.start();
+      setRecording(true);
+    }
+  };
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -120,7 +155,7 @@ export default function ComposePage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Draft a polite email..."
-                className="pr-20"
+                className="pr-28"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -128,6 +163,15 @@ export default function ComposePage() {
                   }
                 }}
               />
+              <Button
+                onClick={toggleVoice}
+                variant="outline"
+                className="absolute right-10 top-1/2 -translate-y-1/2"
+                size="icon"
+                aria-label={recording ? 'Stop recording' : 'Start recording'}
+              >
+                {recording ? (<MicOff className="h-4 w-4" />) : (<Mic className="h-4 w-4" />)}
+              </Button>
               <Button
                 onClick={handleSend}
                 disabled={isLoading}

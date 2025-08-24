@@ -154,7 +154,26 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <div className="p-4 sm:p-6 lg:p-8 min-h-screen">{children}</div>
+        <div className="pb-20 sm:pb-0 p-4 sm:p-6 lg:p-8 min-h-screen">{children}</div>
+        {/* Mobile Bottom Navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:hidden">
+          <ul className="grid grid-cols-5">
+            {[
+              { href: '/', label: 'Home', icon: LayoutDashboard },
+              { href: '/compose', label: 'Chat', icon: MessageSquare },
+              { href: '/assistant', label: 'Assist', icon: Bot },
+              { href: '/agents', label: 'Agents', icon: BrainCircuit },
+              { href: '/settings', label: 'Settings', icon: Settings },
+            ].map((item) => (
+              <li key={item.href}>
+                <Link href={item.href} aria-label={item.label} className="flex flex-col items-center justify-center py-2 text-xs">
+                  <item.icon className={`h-5 w-5 ${pathname === item.href ? 'text-primary' : 'text-muted-foreground'}`} />
+                  <span className={`${pathname === item.href ? 'text-primary' : 'text-muted-foreground'}`}>{item.label}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </SidebarInset>
     </SidebarProvider>
   );

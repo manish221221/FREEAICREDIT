@@ -1,0 +1,2 @@
+declare module '@prisma/client';
+

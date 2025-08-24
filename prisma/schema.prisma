@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id      String       @id @default(cuid())
+  usage   UsageEvent[]
+  pools   PoolMember[]
+}
+
+model Pool {
+  id      String       @id @default(cuid())
+  name    String
+  members PoolMember[]
+  usage   UsageEvent[]
+}
+
+model PoolMember {
+  id      String @id @default(cuid())
+  userId  String
+  poolId  String
+  role    String @default("member")
+  active  Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id])
+  pool Pool @relation(fields: [poolId], references: [id])
+
+  @@unique([userId, poolId])
+}
+
+model UsageEvent {
+  id               String       @id @default(cuid())
+  userId           String
+  poolId           String?
+  status           String
+  promptTokens     Int          @default(0)
+  completionTokens Int          @default(0)
+  costUSD          Float        @default(0)
+  latencyMs        Int?
+  createdAt        DateTime     @default(now())
+
+  @@index([createdAt])
+
+  user User @relation(fields: [userId], references: [id])
+  pool Pool? @relation(fields: [poolId], references: [id])
+}
+
