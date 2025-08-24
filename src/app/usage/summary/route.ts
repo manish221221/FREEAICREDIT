@@ -43,6 +43,7 @@ export async function GET(req: Request) {
     const personal = await db.usageEvent.aggregate({
       where: { userId, poolId: null, status: 'success', createdAt: gte ? { gte } : undefined },
       _sum: { promptTokens: true, completionTokens: true, costUSD: true },
+      _avg: { latencyMs: true },
       _count: true,
     });
 
@@ -57,12 +58,14 @@ export async function GET(req: Request) {
         const poolAgg = await db.usageEvent.aggregate({
           where: { poolId: pm.poolId, status: 'success', createdAt: gte ? { gte } : undefined },
           _sum: { promptTokens: true, completionTokens: true, costUSD: true },
+          _avg: { latencyMs: true },
           _count: true,
         });
 
         const memberAgg = await db.usageEvent.aggregate({
           where: { poolId: pm.poolId, userId, status: 'success', createdAt: gte ? { gte } : undefined },
           _sum: { promptTokens: true, completionTokens: true, costUSD: true },
+          _avg: { latencyMs: true },
           _count: true,
         });
 
@@ -74,11 +77,13 @@ export async function GET(req: Request) {
             calls: memberAgg._count,
             tokens: (memberAgg._sum.promptTokens || 0) + (memberAgg._sum.completionTokens || 0),
             costUSD: memberAgg._sum.costUSD || 0,
+            avgLatencyMs: memberAgg._avg.latencyMs || 0,
           },
           poolUsage: {
             calls: poolAgg._count,
             tokens: (poolAgg._sum.promptTokens || 0) + (poolAgg._sum.completionTokens || 0),
             costUSD: poolAgg._sum.costUSD || 0,
+            avgLatencyMs: poolAgg._avg.latencyMs || 0,
           },
         };
       })
@@ -89,6 +94,7 @@ export async function GET(req: Request) {
         calls: personal._count,
         tokens: (personal._sum.promptTokens || 0) + (personal._sum.completionTokens || 0),
         costUSD: personal._sum.costUSD || 0,
+        avgLatencyMs: personal._avg.latencyMs || 0,
       },
       pools,
     });

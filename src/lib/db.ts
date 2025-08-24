@@ -38,16 +38,33 @@ type AggregateArgs = {
   where?: AggregateWhere;
   _sum?: { promptTokens?: true; completionTokens?: true; costUSD?: true };
   _count?: true;
+  _avg?: { latencyMs?: true };
 };
 
 type AggregateResult = {
   _sum: { promptTokens: number | null; completionTokens: number | null; costUSD: number | null };
   _count: number;
+  _avg: { latencyMs: number | null };
 };
 
 // In-memory stores (empty by default). Swap out for real DB queries.
 const usageEvents: UsageEvent[] = [];
 const poolMembers: PoolMember[] = [];
+
+let prismaSingleton: any | null = null;
+async function getPrisma(): Promise<any | null> {
+  if (prismaSingleton !== null) return prismaSingleton;
+  try {
+    // Dynamic import to avoid hard dependency when not installed
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod: any = await import('@prisma/client');
+    prismaSingleton = new mod.PrismaClient();
+    return prismaSingleton;
+  } catch {
+    prismaSingleton = null;
+    return null;
+  }
+}
 
 function matchesWhere<T extends { [k: string]: any }>(item: T, where?: AggregateWhere): boolean {
   if (!where) return true;
@@ -64,10 +81,36 @@ function matchesWhere<T extends { [k: string]: any }>(item: T, where?: Aggregate
 export const db = {
   usageEvent: {
     async aggregate(args: AggregateArgs): Promise<AggregateResult> {
+      const prisma = await getPrisma();
+      if (prisma) {
+        const where: any = {};
+        if (args.where?.userId !== undefined) where.userId = args.where.userId;
+        if (args.where?.poolId !== undefined) where.poolId = args.where.poolId;
+        if (args.where?.status !== undefined) where.status = args.where.status;
+        if (args.where?.createdAt) where.createdAt = args.where.createdAt;
+        const result = await prisma.usageEvent.aggregate({
+          where,
+          _sum: args._sum,
+          _count: args._count ? { _all: true } : undefined,
+          _avg: args._avg,
+        });
+        return {
+          _sum: {
+            promptTokens: args._sum?.promptTokens ? result._sum?.promptTokens ?? 0 : null,
+            completionTokens: args._sum?.completionTokens ? result._sum?.completionTokens ?? 0 : null,
+            costUSD: args._sum?.costUSD ? result._sum?.costUSD ?? 0 : null,
+          },
+          _count: args._count ? (result._count?._all ?? 0) : 0,
+          _avg: { latencyMs: args._avg?.latencyMs ? (result._avg?.latencyMs ?? 0) : null },
+        };
+      }
+      // In-memory fallback
       const rows = usageEvents.filter(ev => matchesWhere(ev as any, args.where));
       const sumPrompt = rows.reduce((a, b) => a + (b.promptTokens || 0), 0);
       const sumCompletion = rows.reduce((a, b) => a + (b.completionTokens || 0), 0);
       const sumCost = rows.reduce((a, b) => a + (b.costUSD || 0), 0);
+      const latencies = rows.map(r => r.latencyMs).filter(v => typeof v === 'number') as number[];
+      const avgLatency = latencies.length ? latencies.reduce((a, b) => a + b, 0) / latencies.length : 0;
       return {
         _sum: {
           promptTokens: args._sum?.promptTokens ? sumPrompt : null,
@@ -75,6 +118,7 @@ export const db = {
           costUSD: args._sum?.costUSD ? sumCost : null,
         },
         _count: args._count ? rows.length : 0,
+        _avg: { latencyMs: args._avg?.latencyMs ? avgLatency : null },
       };
     },
   },
